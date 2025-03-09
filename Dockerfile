@@ -19,4 +19,4 @@ COPY *.py .
 EXPOSE 8501
 
 # Run the Streamlit app
-CMD ["streamlit", "run", "Game.py"] #replace your_script_name.py
+CMD ["streamlit", "run", "game.py"] #replace your_script_name.py
