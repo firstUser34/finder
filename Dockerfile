@@ -28,7 +28,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt 1 
 RUN pip install playwright
 RUN playwright install chromium
-RUN playwright install --with-deps #add this line to install dependencies.
+RUN playwright install --with-deps 
 RUN playwright browsers #add this line to check install
 COPY *.py .
 EXPOSE 8501
