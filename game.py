@@ -3,37 +3,46 @@ import requests
 from bs4 import BeautifulSoup
 from fpdf import FPDF
 
-# ✅ Predefined Google Dork categories with all relevant queries
+# ✅ Predefined Google Dork categories with site-specific and global queries
 DORKS = {
     "Free Stuff (Giveaways, NFTs, Testnet, Free $)": [
-        '"free airdrop" OR "crypto airdrop" OR "testnet faucet" site:x.com OR site:medium.com OR site:coinmarketcap.com',
-        '"free nft" OR "free mint" OR "nft giveaway" OR "free whitelist" site:twitter.com OR site:opensea.io OR site:discord.com',
-        '"free dollars" OR "free crypto" OR "USDT giveaway" OR "claim free BTC" OR "claim free USDT" site:reddit.com OR site:bitcointalk.org',
-        '"free testnet tokens" OR "claim testnet" OR "testnet rewards" site:github.com OR site:cointelegraph.com OR site:cryptobriefing.com',
-        '"free subscription" OR "free premium account" OR "free trial" OR "promo code" site:github.com OR site:debrid.cc OR site:stackexchange.com'
+        '"free airdrop" OR "crypto airdrop" OR "testnet faucet"',
+        '"free nft" OR "free mint" OR "nft giveaway" OR "free whitelist"',
+        '"free dollars" OR "free crypto" OR "USDT giveaway" OR "claim free BTC" OR "claim free USDT"',
+        '"free testnet tokens" OR "claim testnet" OR "testnet rewards"',
+        '"free subscription" OR "free premium account" OR "free trial" OR "promo code"',
     ],
     "Invite-Only Events (Launch, Mumbai, Global)": [
-        '"invite only event" OR "exclusive launch" OR "private beta" OR "early access" site:eventbrite.com OR site:meetup.com OR site:ticketmaster.com',
-        '"private event Mumbai" OR "Mumbai exclusive event" OR "launch party Mumbai" site:insider.in OR site:bookmyshow.com OR site:allevents.in',
-        '"invite only crypto event" OR "VIP crypto conference" OR "exclusive blockchain summit" site:coindesk.com OR site:cointelegraph.com',
-        '"exclusive global summit" OR "invite-only global event" OR "worldwide blockchain conference" site:forbes.com OR site:bloomberg.com OR site:fortune.com'
+        '"invite only event" OR "exclusive launch" OR "private beta" OR "early access"',
+        '"private event Mumbai" OR "Mumbai exclusive event" OR "launch party Mumbai"',
+        '"invite only crypto event" OR "VIP crypto conference" OR "exclusive blockchain summit"',
+        '"exclusive global summit" OR "invite-only global event" OR "worldwide blockchain conference"',
     ],
     "Crypto & X.com Related": [
-        '"crypto project" OR "new blockchain launch" OR "airdrops" site:x.com OR site:twitter.com OR site:coingecko.com',
-        '"crypto giveaways" OR "free Bitcoin" OR "free USDT" OR "token claim" site:x.com OR site:bitcointalk.org OR site:reddit.com/r/cryptocurrency',
-        '"new DeFi project" OR "IDO launch" OR "crypto presale" OR "prelaunch token" site:medium.com OR site:coinmarketcap.com OR site:crypto.com',
-        '"crypto regulations" OR "Web3 policies" OR "blockchain law" site:sec.gov OR site:europa.eu OR site:gov.in OR site:financialexpress.com'
+        '"crypto project" OR "new blockchain launch" OR "airdrops"',
+        '"crypto giveaways" OR "free Bitcoin" OR "free USDT" OR "token claim"',
+        '"new DeFi project" OR "IDO launch" OR "crypto presale" OR "prelaunch token"',
+        '"crypto regulations" OR "Web3 policies" OR "blockchain law"',
     ],
     "AI & ML Events & Resources": [
-        '"AI summit" OR "machine learning conference" OR "deep learning workshop" site:eventbrite.com OR site:meetup.com OR site:ai.googleblog.com',
-        '"AI research papers" OR "latest ML papers" OR "open source AI models" site:arxiv.org OR site:paperswithcode.com OR site:github.com',
-        '"AI startup funding" OR "AI startup accelerator" OR "AI investment round" site:techcrunch.com OR site:forbes.com OR site:venturebeat.com',
-        '"free AI courses" OR "AI certification free" OR "learn ML online free" site:coursera.org OR site:udacity.com OR site:edx.org'
+        '"AI summit" OR "machine learning conference" OR "deep learning workshop"',
+        '"AI research papers" OR "latest ML papers" OR "open source AI models"',
+        '"AI startup funding" OR "AI startup accelerator" OR "AI investment round"',
+        '"free AI courses" OR "AI certification free" OR "learn ML online free"',
     ]
 }
 
+# ✅ Sites to Search
+SITES = [
+    "coindesk.com", "cointelegraph.com", "eventbrite.com", "meetup.com",
+    "ticketmaster.com", "forbes.com", "bloomberg.com", "fortune.com",
+    "medium.com", "coinmarketcap.com", "crypto.com", "x.com"
+]
+
 # ✅ Function to perform Google search
-def google_search(query):
+def google_search(query, site=None):
+    if site:
+        query = f"{query} site:{site}"
     url = f"https://www.google.com/search?q={query}"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -67,19 +76,37 @@ if st.button("Search Now"):
         for category, queries in DORKS.items():
             st.write(f"🔎 Searching: **{category}**...")
             for query in queries:
+                # Search on Google globally
                 try:
                     links = google_search(query)
                     all_links.extend(links)
                 except Exception as e:
-                    st.warning(f"Error with query: {query}. Error: {e}")
+                    st.warning(f"Error with Google search: {query}. Error: {e}")
+
+                # Search on specific trusted sites
+                for site in SITES:
+                    try:
+                        links = google_search(query, site)
+                        all_links.extend(links)
+                    except Exception as e:
+                        st.warning(f"Error with {site} search: {query}. Error: {e}")
     else:
         st.write(f"🔍 Searching for **{selected_category}**...")
         for query in DORKS[selected_category]:
+            # Search on Google globally
             try:
                 links = google_search(query)
                 all_links.extend(links)
             except Exception as e:
-                st.warning(f"Error with query: {query}. Error: {e}")
+                st.warning(f"Error with Google search: {query}. Error: {e}")
+
+            # Search on specific trusted sites
+            for site in SITES:
+                try:
+                    links = google_search(query, site)
+                    all_links.extend(links)
+                except Exception as e:
+                    st.warning(f"Error with {site} search: {query}. Error: {e}")
 
     # ✅ Remove duplicate links
     unique_links = list(set(all_links))
