@@ -1,22 +1,35 @@
-# Use a Python base image
+# # Use a Python base image
+# FROM python:3.9-slim-buster
+
+# # Set the working directory in the container
+# WORKDIR /app
+
+# # Copy the requirements file and install dependencies
+# COPY requirements.txt .
+# RUN pip install --no-cache-dir -r requirements.txt
+
+# # Install Playwright and its browsers
+# RUN pip install playwright
+# RUN playwright install chromium
+
+# # Copy the Streamlit app file
+# COPY *.py .
+
+# # Expose the Streamlit port
+# EXPOSE 8501
+
+# # Run the Streamlit app
+# CMD ["streamlit", "run", "game.py"] #replace your_script_name.py
+
+
 FROM python:3.9-slim-buster
-
-# Set the working directory in the container
 WORKDIR /app
-
-# Copy the requirements file and install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Install Playwright and its browsers
+RUN pip install --no-cache-dir -r requirements.txt 1 
 RUN pip install playwright
 RUN playwright install chromium
-
-# Copy the Streamlit app file
+RUN playwright install --with-deps #add this line to install dependencies.
+RUN playwright browsers #add this line to check install
 COPY *.py .
-
-# Expose the Streamlit port
 EXPOSE 8501
-
-# Run the Streamlit app
-CMD ["streamlit", "run", "game.py"] #replace your_script_name.py
+CMD ["streamlit", "run", "game.py"]
