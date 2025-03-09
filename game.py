@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
+from time import sleep
 from fpdf import FPDF
 
 # ✅ Predefined Google Dork categories with site-specific and global queries
@@ -35,11 +36,11 @@ DORKS = {
 # ✅ Sites to Search
 SITES = [
     "coindesk.com", "cointelegraph.com", "eventbrite.com", "meetup.com",
-    "ticketmaster.com", "forbes.com", "bloomberg.com", "fortune.com",
+    "ticketmaster.com", "forbes.com", "bloomberg.com", "fortune.com", "google.com",
     "medium.com", "coinmarketcap.com", "crypto.com", "x.com"
 ]
 
-# ✅ Function to perform Google search
+# ✅ Function to perform Google search with delay
 def google_search(query, site=None):
     if site:
         query = f"{query} site:{site}"
@@ -47,8 +48,13 @@ def google_search(query, site=None):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     }
-    response = requests.get(url, headers=headers)
-    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.text, 'html.parser')
+    except Exception as e:
+        st.warning(f"❌ Google Search Failed: {query}. Error: {e}")
+        return []
     
     links = []
     for g in soup.find_all('div', class_='yuRUbf'):
@@ -78,35 +84,48 @@ if st.button("Search Now"):
             for query in queries:
                 # Search on Google globally
                 try:
+                    st.write(f"🔍 Searching Google: {query}")
                     links = google_search(query)
                     all_links.extend(links)
                 except Exception as e:
                     st.warning(f"Error with Google search: {query}. Error: {e}")
-
+                
+                sleep(5)  # ✅ Delay to prevent rate limiting
+                
                 # Search on specific trusted sites
                 for site in SITES:
                     try:
+                        st.write(f"🔍 Searching {site}: {query}")
                         links = google_search(query, site)
                         all_links.extend(links)
                     except Exception as e:
                         st.warning(f"Error with {site} search: {query}. Error: {e}")
+                    
+                    sleep(5)  # ✅ Delay between each search
+
     else:
         st.write(f"🔍 Searching for **{selected_category}**...")
         for query in DORKS[selected_category]:
             # Search on Google globally
             try:
+                st.write(f"🔍 Searching Google: {query}")
                 links = google_search(query)
                 all_links.extend(links)
             except Exception as e:
                 st.warning(f"Error with Google search: {query}. Error: {e}")
 
+            sleep(5)  # ✅ Delay
+
             # Search on specific trusted sites
             for site in SITES:
                 try:
+                    st.write(f"🔍 Searching {site}: {query}")
                     links = google_search(query, site)
                     all_links.extend(links)
                 except Exception as e:
                     st.warning(f"Error with {site} search: {query}. Error: {e}")
+
+                sleep(5)  # ✅ Delay
 
     # ✅ Remove duplicate links
     unique_links = list(set(all_links))
