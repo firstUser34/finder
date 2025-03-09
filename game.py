@@ -1,10 +1,12 @@
 import streamlit as st
 import requests
-from bs4 import BeautifulSoup
 from time import sleep
+import random
 from fpdf import FPDF
+from urllib.parse import quote_plus
+from playwright.sync_api import sync_playwright
 
-# ✅ Predefined Google Dork categories with site-specific and global queries
+# ✅ Google Dorks Categories
 DORKS = {
     "Free Stuff (Giveaways, NFTs, Testnet, Free $)": [
         '"free airdrop" OR "crypto airdrop" OR "testnet faucet"',
@@ -33,106 +35,79 @@ DORKS = {
     ]
 }
 
-# ✅ Sites to Search
-SITES = [
-    "coindesk.com", "cointelegraph.com", "eventbrite.com", "meetup.com",
-    "ticketmaster.com", "forbes.com", "bloomberg.com", "fortune.com", "google.com",
-    "medium.com", "coinmarketcap.com", "crypto.com", "x.com"
-]
+# ✅ Relevant websites for specific categories
+CATEGORY_SITES = {
+    "Free Stuff (Giveaways, NFTs, Testnet, Free $)": ["google.com"],
+    "Invite-Only Events (Launch, Mumbai, Global)": ["google.com", "eventbrite.com", "meetup.com"],
+    "Crypto & X.com Related": ["google.com", "coindesk.com", "cointelegraph.com", "crypto.com", "x.com"],
+    "AI & ML Events & Resources": ["google.com", "forbes.com", "bloomberg.com", "fortune.com"]
+}
 
-# ✅ Function to perform Google search with delay
-def google_search(query, site=None):
+# ✅ Function to perform Google search using Playwright (headless browser)
+def google_search_playwright(query, site=None):
     if site:
         query = f"{query} site:{site}"
-    url = f"https://www.google.com/search?q={query}"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-    }
-    
+    search_query = quote_plus(query)
+    url = f"https://www.google.com/search?q={search_query}"
+
     try:
-        response = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(response.text, 'html.parser')
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True) #Headless browser
+            page = browser.new_page()
+            page.goto(url, timeout=60000) #Increased timeout.
+            page.wait_for_selector('div.yuRUbf', timeout=60000) #Increased timeout.
+            results = page.eval_on_selector_all('div.yuRUbf', lambda elements: [
+                {'url': el.querySelector('a').href, 'title': el.querySelector('h3').textContent}
+                for el in elements if el.querySelector('a') and el.querySelector('h3')
+            ])
+            browser.close()
+            return results
+
     except Exception as e:
-        st.warning(f"❌ Google Search Failed: {query}. Error: {e}")
+        st.warning(f"❌ Playwright Search Failed: {query}. Error: {e}")
         return []
-    
-    links = []
-    for g in soup.find_all('div', class_='yuRUbf'):
-        a = g.find('a', href=True)
-        if a:
-            links.append(a['href'])
-    
-    return links
 
 # ✅ Streamlit UI
 st.title("🔍 Smart Search: Free Stuff, Invites, Crypto & AI/ML Events")
 st.write("Find relevant links automatically using Google Dorking!")
 
-# ✅ Select category or search all
-search_all = st.checkbox("Search all categories at once")
-if not search_all:
-    selected_category = st.selectbox("Choose a category:", list(DORKS.keys()))
+# ✅ Select category
+selected_category = st.selectbox("Choose a category:", list(DORKS.keys()))
 
 # ✅ Search button
 if st.button("Search Now"):
+    st.write(f"🔍 Searching for **{selected_category}**...")
     all_links = []
-    
-    if search_all:
-        st.write("🔍 Searching across **all categories**...")
-        for category, queries in DORKS.items():
-            st.write(f"🔎 Searching: **{category}**...")
-            for query in queries:
-                # Search on Google globally
-                try:
-                    st.write(f"🔍 Searching Google: {query}")
-                    links = google_search(query)
-                    all_links.extend(links)
-                except Exception as e:
-                    st.warning(f"Error with Google search: {query}. Error: {e}")
-                
-                sleep(5)  # ✅ Delay to prevent rate limiting
-                
-                # Search on specific trusted sites
-                for site in SITES:
-                    try:
-                        st.write(f"🔍 Searching {site}: {query}")
-                        links = google_search(query, site)
-                        all_links.extend(links)
-                    except Exception as e:
-                        st.warning(f"Error with {site} search: {query}. Error: {e}")
-                    
-                    sleep(5)  # ✅ Delay between each search
 
-    else:
-        st.write(f"🔍 Searching for **{selected_category}**...")
-        for query in DORKS[selected_category]:
-            # Search on Google globally
-            try:
-                st.write(f"🔍 Searching Google: {query}")
-                links = google_search(query)
+    # ✅ Get relevant sites for the category
+    relevant_sites = CATEGORY_SITES[selected_category]
+
+    for query in DORKS[selected_category]:
+        # ✅ Search Google globally first
+        st.write(f"🔍 Searching Google: {query}")
+        links = google_search_playwright(query)
+        all_links.extend(links)
+        sleep(random.randint(3, 7))
+
+        # ✅ Search only relevant sites, not all
+        for site in relevant_sites:
+            if site != "google.com":
+                st.write(f"🔍 Searching {site}: {query}")
+                links = google_search_playwright(query, site)
                 all_links.extend(links)
-            except Exception as e:
-                st.warning(f"Error with Google search: {query}. Error: {e}")
-
-            sleep(5)  # ✅ Delay
-
-            # Search on specific trusted sites
-            for site in SITES:
-                try:
-                    st.write(f"🔍 Searching {site}: {query}")
-                    links = google_search(query, site)
-                    all_links.extend(links)
-                except Exception as e:
-                    st.warning(f"Error with {site} search: {query}. Error: {e}")
-
-                sleep(5)  # ✅ Delay
+                sleep(random.randint(3, 7))
 
     # ✅ Remove duplicate links
-    unique_links = list(set(all_links))
-    
+    unique_links = []
+    seen_urls = set()
+    for link_data in all_links:
+        if link_data['url'] not in seen_urls:
+            unique_links.append(link_data)
+            seen_urls.add(link_data['url'])
+
     if unique_links:
         st.success(f"✅ Found {len(unique_links)} relevant links!")
-        link_text = "\n".join(unique_links)
+        link_text = "\n".join([f"{link['title']}: {link['url']}" for link in unique_links])
         st.text_area("Results", link_text, height=300)
 
         # ✅ Download as text file
@@ -144,7 +119,7 @@ if st.button("Search Now"):
         pdf.set_auto_page_break(auto=True, margin=15)
         pdf.set_font("Arial", size=12)
         for link in unique_links:
-            pdf.cell(200, 10, txt=link, ln=True)
+            pdf.cell(200, 10, txt=f"{link['title']}: {link['url']}", ln=True)
         pdf_output = pdf.output(dest='S').encode('latin1')
         st.download_button("📜 Download as .pdf", data=pdf_output, file_name="search_results.pdf", mime="application/pdf")
     else:
